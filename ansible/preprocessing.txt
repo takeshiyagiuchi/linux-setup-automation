@@ -1,0 +1,25 @@
+*client: delete known_hosts
+
+# sudoer no password
+sudo visudo
+
+# change hostname
+sudo hostnamectl set-hostname GPU02
+
+# add a user "ansible"
+sudo adduser ansible --uid 2000 --gid 2000
+sudo gpasswd -a ansible sudo
+
+# change ssh configuration
+---
+#PubkeyAuthentication yes
+PubkeyAuthentication yes
+
+#PasswordAuthentication yes
+PasswordAuthentication yes
+
+Match User ansible
+	PasswordAuthentication no
+---
+
+! change svadmin password

@@ -1,0 +1,5 @@
+dirroot: { name: "docker", mode: "775" }
+dircompose: { name: "docker-compose", mode: "775" }
+dirjupyter: { name: "jupyter", mode: "775" }
+dirvoljupyter: { name: "docker_volume_jupyter", mode: "755" }
+filejupyter: { name: "jupyter_token.txt", mode: "660"  }

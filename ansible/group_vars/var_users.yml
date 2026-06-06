@@ -1,0 +1,6 @@
+admins:
+  - { name: 'testuser1',  uid: 1091, groups: 'sudo', jupyter: false, password: "{{ 'set_tmp_pw' | ansible.builtin.password_hash('sha512') }}" }
+  - { name: 'testuser3',  uid: 1093, groups: 'sudo', jupyter: true, password: "{{ 'set_tmp_pw' | ansible.builtin.password_hash('sha512') }}" }
+
+users:
+  - { name: 'testuser2',  uid: 1092, groups: '', jupyter: true,     password: '!' }

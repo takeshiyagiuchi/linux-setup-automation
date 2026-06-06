@@ -1,0 +1,180 @@
+# https://qiita.com/murakamixi/items/5f6cf5c1ab6b4090f64a
+# https://github.com/NVIDIA/libnvidia-container/issues/154
+- hosts: all
+  become: true
+
+  vars:
+    packages_list:
+      - nvidia-container-runtime
+    dir_aptkey_dict: { path: "/etc/apt/keyrings", owner: "root" , group: "root" , mode: "0755" }
+    file_aptkey_nvidiacr_dict: { path: "{{ dir_aptkey_dict.path }}/nvidia-container-runtime.asc", mode: "0644" }
+    url_aptrep_nvidiacr: "https://nvidia.github.io/nvidia-container-runtime/"
+    url_aptkey_nvidiacr: "{{ url_aptrep_nvidiacr }}/gpgkey"
+    filename_aptrep_nvidiacr: "nvidia-container-runtime"
+    file_aptrep_nvidiacr: "/etc/apt/sources.list.d/{{ filename_aptrep_nvidiacr }}.list"
+
+    file_config_nvidiacr_org: "/etc/nvidia-container-runtime/config.toml"
+    # dir_config_nvidiacr_test: "/home/ansible/test/nvidia-container-runtime" # for testing
+    # file_config_nvidiacr_test: "{{ dir_config_nvidiacr_test }}/config.toml" # for testing
+    # file_config_nvidiacr: "{{ file_config_nvidiacr_test }}" # for testing
+    file_config_nvidiacr: "{{ file_config_nvidiacr_org }}" # # comment out when testing
+
+
+  tasks:
+    - name: 1-1) install packages (update all packages before installation)
+      ansible.builtin.apt:
+        name: "*"
+        state: latest
+      diff: true
+
+    - name: 1-1) install packages (install)
+      ansible.builtin.apt:
+        pkg: "{{ packages_list }}"
+      diff: true
+
+    - name: 1-1) install packages (result 1/2)
+      ansible.builtin.shell:
+        cmd: apt -qq list {{ item }}
+      with_items:
+        - "{{ packages_list }}"
+      register: out_apt_before
+
+    - name: 1-1) install packages (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      with_items:
+        - "{{ out_apt_before.results }}"
+
+
+
+    - name: 1-2) create an apt-key directory
+      ansible.builtin.file:
+        path: "{{ dir_aptkey_dict.path }}"
+        state: directory
+        owner: "{{ dir_aptkey_dict.owner }}"
+        group: "{{ dir_aptkey_dict.group }}"
+        mode: "{{ dir_aptkey_dict.mode }}"
+      diff: true
+
+    - name: 1-2) create an apt-key directory (result 1/2)
+      ansible.builtin.shell:
+        cmd: ls -ldh {{ dir_aptkey_dict.path }}
+      register: out_ls_diraptkey
+
+    - name: 1-2) create an apt-key directory (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ out_ls_diraptkey.stdout }}"
+
+
+
+    - name: 1-3) get the official apt key for nvidia-container-runtime
+      ansible.builtin.get_url:
+        url: "{{ url_aptkey_nvidiacr }}"
+        dest: "{{ file_aptkey_nvidiacr_dict.path }}"
+        mode: "{{ file_aptkey_nvidiacr_dict.mode }}"
+        force: true
+
+    - name: 1-3) get the official apt key for nvidia-container-runtime (result 1/2)
+      ansible.builtin.shell:
+        cmd: cat {{ file_aptkey_nvidiacr_dict.path }}
+      register: out_cat_aptkey
+
+    - name: 1-3) get the official apt key for nvidia-container-runtime (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ out_cat_aptkey.stdout }}"
+
+
+
+    - name: 1-4) retrieve os distribution (retrieve)
+      ansible.builtin.shell:
+        cmd: . /etc/os-release;echo $ID$VERSION_ID
+      register: out_osdist
+
+    - name: 1-4) retrieve os distribution (set a var)
+      ansible.builtin.set_fact:
+        os_dist: "{{ out_osdist.stdout }}"
+
+    - name: 1-4) set vars (result)
+      ansible.builtin.debug:
+        var: os_dist
+
+
+
+    - name: 1-5) add the official apt key for nvidia-container-runtime
+      ansible.builtin.shell:
+        cmd: curl -s -L {{ url_aptrep_nvidiacr }}/{{ os_dist }}/{{ filename_aptrep_nvidiacr }}.list | tee {{ file_aptrep_nvidiacr }}
+
+    - name: 1-5) add the official apt key for nvidia-container-runtime (result 1/2)
+      ansible.builtin.shell:
+        cmd: cat {{ file_aptrep_nvidiacr }}
+      register: out_cat_aptrep
+
+    - name: 1-5) add the official apt key for nvidia-container-runtime (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ out_cat_aptrep.stdout }}"
+
+
+
+    - name: 1-6) install packages (update all packages before installation)
+      ansible.builtin.apt:
+        name: "*"
+        state: latest
+      diff: true
+
+    - name: 1-6) install packages (install)
+      ansible.builtin.apt:
+        pkg: "{{ packages_list }}"
+      diff: true
+
+    - name: 1-6) install packages (result 1/2)
+      ansible.builtin.shell:
+        cmd: apt -qq list {{ item }}
+      with_items:
+        - "{{ packages_list }}"
+      register: out_apt_after
+
+    - name: 1-6) install packages (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      with_items:
+        - "{{ out_apt_after.results }}"
+
+
+
+    # - name: 2-1) Edit the nvidia-container-runtime config file (make a directory for testing) # for testing
+    #   become: true
+    #   become_user: ansible
+    #   ansible.builtin.file: # for testing
+    #     path: "{{ dir_config_nvidiacr_test }}" # for testing
+    #     state: directory # for testing
+    #   diff: true # for testing
+
+    # - name: 2-1) Edit the nvidia-container-runtime config file (copy the config file) # for testing
+    #   ansible.builtin.copy: # for testing
+    #     remote_src: true # for testing
+    #     src: "{{ file_config_nvidiacr_org }}" # for testing
+    #     dest: "{{ file_config_nvidiacr_test }}" # for testing
+    #   diff: true
+
+    - name: 2-1) Edit the nvidia-container-runtime config file (to activate no-cgroups, 1/2)
+      ansible.builtin.lineinfile:
+        path: "{{ file_config_nvidiacr }}"
+        state: absent
+        regexp: "^no-cgroups = true"
+      diff: true
+
+    - name: 2-1) Edit the nvidia-container-runtime config file (to activate no-cgroups, 2/2)
+      ansible.builtin.lineinfile:
+        path: "{{ file_config_nvidiacr }}"
+        regexp: "^#no-cgroups = false"
+        line: "#no-cgroups = false\nno-cgroups = true"
+      diff: true
+
+    - name: 2-1) Edit the nvidia-container-runtime config file (result 1/2)
+      ansible.builtin.shell:
+        cmd: cat {{ file_config_nvidiacr }}
+      register: out_cat_nvidiacrconfig
+
+    - name: 2-1) Edit the nvidia-container-runtime config file (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ out_cat_nvidiacrconfig.stdout }}"

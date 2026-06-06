@@ -1,0 +1,184 @@
+# https://docs.ansible.com/ansible/latest/collections/ansible/builtin/import_playbook_module.html
+# - hosts: all
+#   become: true
+#   tasks:
+#     - ansible.builtin.debug:
+#         msg: 1-1) Set up Wake-on-LAN
+#
+# This process is done in autoinstall
+# - name: 1-1) Set up Wake-on-LAN
+#   ansible.builtin.import_playbook: wol/setup_wol
+
+- hosts: all
+  become: true
+  tasks:
+    - ansible.builtin.debug:
+        msg: SET UP ALL AT ONCE - 2-1) Add users
+
+- name: 2-1) Add users
+  ansible.builtin.import_playbook: users/add_users.yml
+
+
+- hosts: all
+  become: true
+  tasks:
+    - ansible.builtin.debug:
+        msg: SET UP ALL AT ONCE - 2-2) Edit sshd_config (Allow users only SSH public-key access)
+
+- name: 2-2) Edit sshd_config (Allow users only SSH public-key access)
+  ansible.builtin.import_playbook: users/configure_sshd.yml
+
+
+- hosts: all
+  become: true
+  tasks:
+    - ansible.builtin.debug:
+        msg: SET UP ALL AT ONCE - 2-3) Distribute the SSH public-key to users
+
+- name: 2-3) Distribute the SSH public-key to users
+  ansible.builtin.import_playbook: users/distribute_public_keys.yml
+
+
+- hosts: all
+  become: true
+  tasks:
+    - ansible.builtin.debug:
+        msg: SET UP ALL AT ONCE - 2-4) Generate and distribute an SSH key to connect from ansible to users
+
+- name: 2-4) Generate and distribute an SSH key to connect from ansible to users
+  ansible.builtin.import_playbook: users/keygen_ansible.yml
+
+
+- hosts: all
+  become: true
+  tasks:
+    - ansible.builtin.debug:
+        msg: SET UP ALL AT ONCE - 2-5) Install quota
+
+- name: 2-5) Install quota
+  ansible.builtin.import_playbook: users/quota_installation.yml
+
+
+- hosts: all
+  become: true
+  tasks:
+    - ansible.builtin.debug:
+        msg: SET UP ALL AT ONCE - 2-6) Set the limit of disk usage per user
+
+- name: 2-6) Set the limit of disk usage per user
+  ansible.builtin.import_playbook: users/quota_per_user.yml
+
+
+
+- hosts: all
+  become: true
+  tasks:
+    - ansible.builtin.debug:
+        msg: SET UP ALL AT ONCE - 3-1) Mount NAS
+
+- name: 3-1) Mount NAS
+  ansible.builtin.import_playbook: nas/mount_nas.yml
+
+
+- hosts: all
+  become: true
+  tasks:
+    - ansible.builtin.debug:
+        msg: SET UP ALL AT ONCE - 3-2) Set up automount of NAS
+
+- name: 3-2) Set up automount of NAS
+  ansible.builtin.import_playbook: nas/setup_automount.yml
+
+
+- hosts: all
+  become: true
+  tasks:
+    - ansible.builtin.debug:
+        msg: SET UP FOR NEW USER - 3-3) Make user directory under NAS
+
+- name: 3-3) Mount NAS
+  ansible.builtin.import_playbook: nas/make_user_directory.yml
+
+
+
+- hosts: all
+  become: true
+  tasks:
+    - ansible.builtin.debug:
+        msg: SET UP ALL AT ONCE - 4-1) Install Nvidia driver
+
+- name: 4-1) Install Nvidia driver
+  ansible.builtin.import_playbook: gpu/install_nvidia_driver.yml
+
+
+
+- hosts: all
+  become: true
+  tasks:
+    - ansible.builtin.debug:
+        msg: SET UP ALL AT ONCE - 5-1) Install Docker
+
+- name: 5-1) Install Docker
+  ansible.builtin.import_playbook: docker/install_docker.yml
+
+
+- hosts: all
+  become: true
+  tasks:
+    - ansible.builtin.debug:
+        msg: SET UP ALL AT ONCE - 5-2) Install nvidia-container-runtime (for using GPU on a container)
+
+- name: 5-2) Install nvidia-container-runtime (for using GPU on a container)
+  ansible.builtin.import_playbook: docker/setup_docker_for_gpu.yml
+
+
+- hosts: all
+  become: true
+  tasks:
+    - ansible.builtin.debug:
+        msg: SET UP ALL AT ONCE - 5-3) Set up Docker Rootless
+
+- name: 5-3) Set up Docker Rootless
+  ansible.builtin.import_playbook: docker/setup_docker_rootless.yml
+
+
+- hosts: all
+  become: true
+  tasks:
+    - ansible.builtin.debug:
+        msg: SET UP ALL AT ONCE - 5-4) Set up a Jupyter container per user
+
+- name: 5-4) Set up a Jupyter container per user
+  ansible.builtin.import_playbook: docker/setup_jupyter_containers.yml
+
+
+
+- hosts: all
+  become: true
+  tasks:
+    - ansible.builtin.debug:
+        msg: SET UP ALL AT ONCE - 6-1) Install AWS CLI
+
+- name: 6-1) Install AWS CLI
+  ansible.builtin.import_playbook: aws/setup_aws_cli.yml
+
+
+- hosts: all
+  become: true
+  tasks:
+    - ansible.builtin.debug:
+        msg: SET UP ALL AT ONCE - 6-2) Set up CloudWatch Agent
+
+- name: 6-2) Set up CloudWatch Agent
+  ansible.builtin.import_playbook: aws/setup_cloudwatch_agent.yml
+
+
+
+- hosts: GPU03
+  become: true
+  tasks:
+    - ansible.builtin.debug:
+        msg: SET UP ALL AT ONCE - 7-1) Set up NAS monitoring
+
+- name: 7-1) Set up NAS monitoring
+  ansible.builtin.import_playbook: aws/add_nas_disk_info_for_gpu03.yml

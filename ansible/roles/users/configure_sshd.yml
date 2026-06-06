@@ -1,0 +1,62 @@
+- hosts: all
+  become: true
+
+  vars_files:
+    - ../../group_vars/var_users.yml
+
+  vars:
+    # filepath_sshdconfig: /home/ansible/test/sshd_config # for testing
+    filepath_sshdconfig: /etc/ssh/sshd_config
+
+  tasks:
+    - name: 1) Concatenate the non-admin usernames
+      ansible.builtin.set_fact:
+        nonadmins: "{{ nonadmins ~ ',' ~ item.name }}"
+      with_items:
+        - "{{ users }}"
+      vars:
+        nonadmins: ""
+
+    - name: 1) Concatenate the non-admin usernames (result)
+      debug: var=nonadmins
+
+
+
+    - name: 2) Edit the sshd config file (to forbid non-admins to ssh with password, 1/2)
+      ansible.builtin.lineinfile:
+        path: "{{ filepath_sshdconfig }}"
+        state: absent
+        regexp: "^\tPasswordAuthentication no"
+      diff: true
+
+    - name: 2) Edit the sshd config file (to forbid non-admins to ssh with password, 2/2)
+      ansible.builtin.lineinfile:
+        path: "{{ filepath_sshdconfig }}"
+        regexp: "^Match User ansible"
+        line: "Match User ansible{{ nonadmins }}\n        PasswordAuthentication no"
+      diff: true
+
+    - name: 2) Edit the sshd config file (result 1/2)
+      ansible.builtin.shell:
+        cmd: cat {{ filepath_sshdconfig }}
+      register: out_cat_sshdconfig
+
+    - name: 2) Edit the sshd config file (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ out_cat_sshdconfig.stdout }}"
+
+
+
+    - name: 3) restart sshd
+      ansible.builtin.service:
+        name: sshd
+        state: restarted
+
+    - name: 3) restart sshd (result 1/2)
+      ansible.builtin.shell:
+        cmd: service sshd status
+      register: out_servicestatus_sshd
+
+    - name: 3) restart sshd (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ out_servicestatus_sshd.stdout }}"

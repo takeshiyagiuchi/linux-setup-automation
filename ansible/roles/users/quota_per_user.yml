@@ -1,0 +1,32 @@
+# https://www.linode.com/docs/guides/file-system-quotas/
+- hosts: all
+  become: true
+
+  vars_files:
+    - ../../group_vars/var_users.yml
+
+  vars:
+    limit_soft: 290G
+    limit_hard: 300G
+
+  tasks:
+    - name: 1) Edit quota
+      ansible.builtin.shell:
+        cmd: setquota -u {{ item.name }} {{ limit_soft }} {{ limit_hard }} 0 0 /
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+
+    - name: 1) Edit quota (result 1/2)
+      ansible.builtin.shell:
+        cmd: quota -vs {{ item.name }}
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+      register: out_quota_v
+
+    - name: 1) Edit quota (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      with_items:
+        - "{{ out_quota_v.results }}"

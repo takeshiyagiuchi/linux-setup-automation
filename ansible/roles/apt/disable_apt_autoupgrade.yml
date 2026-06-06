@@ -1,0 +1,96 @@
+# https://qiita.com/dan-go/items/0d863ab5d11494cd7ec5
+- hosts: all
+  become: true
+
+  vars:
+    dirpath_backup: /home/ansible/server_setup
+    filepath_autoupgrade: /etc/apt/apt.conf.d/20auto-upgrades
+    filepath_unattendedupgrade: /etc/apt/apt.conf.d/50unattended-upgrades
+
+  tasks:
+    - name: 1) backup the files to edit (check backup 1/4)
+      ansible.builtin.shell:
+        cmd: ls -la {{ dirpath_backup }} | grep "20auto-upgrades" | wc -l
+      register: backuped_autoupgrade
+
+    - name: 1) backup the files to edit (check backup 2/4)
+      ansible.builtin.debug:
+        msg: "{{ backuped_autoupgrade }}"
+
+    - name: 1) backup the files to edit (check backup 3/4)
+      ansible.builtin.shell:
+        cmd: ls -la {{ dirpath_backup }} | grep "50unattended-upgrades" | wc -l
+      register: backuped_unattendedupgrade
+
+    - name: 1) backup the files to edit (check backup 3/4)
+      ansible.builtin.debug:
+        msg: "{{ backuped_unattendedupgrade }}"
+
+    - name: 1) backup the files to edit (autoupgrade)
+      ansible.builtin.copy:
+        src: "{{ filepath_autoupgrade }}"
+        dest: "{{ dirpath_backup }}"
+        remote_src: yes
+      when: backuped_autoupgrade.stdout == "0"
+
+    - name: 1) backup the files to edit (unattendedupgrade)
+      ansible.builtin.copy:
+        src: "{{ filepath_unattendedupgrade }}"
+        dest: "{{ dirpath_backup }}"
+        remote_src: yes
+      when: backuped_unattendedupgrade.stdout == "0"
+
+    - name: 1) backup the files to edit (result 1/2)
+      ansible.builtin.shell:
+        cmd: ls -la {{ dirpath_backup }}
+      register: out_ls_backup
+
+    - name: 1) backup the files to edit (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ out_ls_backup }}"
+
+
+
+    - name: 2) edit apt-autoupgrade config file (edit 1/2)
+      ansible.builtin.lineinfile:
+        path: "{{ filepath_autoupgrade }}"
+        regexp: '^APT::Periodic::Update-Package-Lists "1";$'
+        line: APT::Periodic::Update-Package-Lists "0";
+      diff: true
+
+    - name: 2) edit apt-autoupgrade config file (edit 2/2)
+      ansible.builtin.lineinfile:
+        path: "{{ filepath_autoupgrade }}"
+        regexp: '^APT::Periodic::Unattended-Upgrade "1";$'
+        line: APT::Periodic::Unattended-Upgrade "0";
+      diff: true
+
+    - name: 2) edit apt-autoupgrade config file (result 1/2)
+      ansible.builtin.shell:
+        cmd: cat {{ filepath_autoupgrade }}
+      register: out_cat_autoupgrade
+
+    - name: 2) edit apt-autoupgrade config file (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ out_cat_autoupgrade }}"
+
+
+
+    ### The process below is to disable updating security-related packages.
+    ### We are not sure if this is needed.
+    # - name: 3) edit apt-unattendedupgrade config file
+    #   ansible.builtin.lineinfile:
+    #     path: "{{ filepath_unattendedupgrade }}"
+    #     regexp: '"\${distro_id}:\${distro_codename}-security";$'
+    #     line: \t// "${distro_id}:${distro_codename}-security";
+    #     backrefs: yes
+    #   diff: true
+    #
+    # - name: 3) edit apt-unattendedupgrade config file (result 1/2)
+    #   ansible.builtin.shell:
+    #     cmd: cat {{ filepath_unattendedupgrade }}
+    #   register: out_cat_unattendedupgrade
+    #
+    # - name: 3) edit apt-unattendedupgrade config file (result 2/2)
+    #   ansible.builtin.debug:
+    #     msg: "{{ out_cat_unattendedupgrade }}"

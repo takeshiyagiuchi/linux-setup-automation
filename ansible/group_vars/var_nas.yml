@@ -1,0 +1,6 @@
+nas:
+  - { address: "192.168.1.1", directory: "/volume1/share", mountpoint: "/nas/share"}
+
+mountpoints:
+  - { path: "/nas", owner: "root", group: "root", mode: "755" }
+  - { path: "/nas/share", owner: "root", group: "root", mode: "777" }

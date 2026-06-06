@@ -1,0 +1,28 @@
+- hosts: all
+  become: true
+  vars_files:
+    - ../../group_vars/var_hostnames.yml
+  tasks:
+    - name: Get hostnames and bind them into formatted string
+      set_fact:
+        formatted_string: "{{ formatted_string | default('') + item.ipaddr + '\t\t' + item.hostname + '\n' }}"
+      with_items: "{{ hostnames }}"
+
+    - name: Append formatted_string to /etc/hosts
+      blockinfile:
+        path: /etc/hosts
+        block: "{{ formatted_string }}"
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - DO NOT EDIT THIS SECTION"
+        insertbefore: "# The following lines are desirable for IPv6 capable hosts"
+
+    - name: Read /etc/hosts content to show
+      slurp:
+        src: /etc/hosts
+      register: file_content
+
+    - name: Display /etc/hosts content
+      debug:
+        var: file_content.content | b64decode
+
+
+

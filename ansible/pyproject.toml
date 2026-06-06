@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "office-gpu-servers"
+version = "0.1.0"
+description = ""
+authors = ["Takeshi Yagiuchi <yagiuchi@jp.com>"]
+readme = "README.md"
+packages = [{include = "office_gpu_servers"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+ansible-core = "^2.15.0"
+ansible-generator = "^3.1.1"
+passlib = "^1.7.4"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

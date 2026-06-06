@@ -1,0 +1,72 @@
+# https://docs.docker.com/engine/security/rootless/
+- hosts: all
+  become: true
+
+  vars_files:
+    - ../../group_vars/var_users.yml
+
+  vars:
+    packages_setup_list:
+      - dbus-user-session
+      - uidmap
+
+  tasks:
+    - name: 1) install packages for rootless docker installation (update all packages before installation)
+      ansible.builtin.apt:
+        name: "*"
+        state: latest
+      diff: true
+
+    - name: 1) install packages for rootless docker installation (install)
+      ansible.builtin.apt:
+        pkg: "{{ packages_setup_list }}"
+      diff: true
+
+    - name: 1) install packages for rootless docker installation (result 1/2)
+      ansible.builtin.shell:
+        cmd: apt -qq list {{ item }}
+      with_items:
+        - "{{ packages_setup_list }}"
+      register: out_apt_setup
+
+    - name: 1) install packages for rootless docker installation (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      with_items:
+        - "{{ out_apt_setup.results }}"
+
+
+
+    - name: 2) install docker-rootless per user
+      become: true
+      become_user: ansible
+      ansible.builtin.shell:
+        cmd: ssh -i /home/ansible/.ssh/office_gpu_server_users {{ item.name }}@localhost /usr/bin/dockerd-rootless-setuptool.sh install
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+      register: out_dockerrootless_setup
+
+    - name: 2) install docker-rootless per user (result)
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      with_items:
+        - "{{ out_dockerrootless_setup.results }}"
+
+
+
+    - name: 3) enable lingering per user
+      become: true
+      become_user: ansible
+      ansible.builtin.shell:
+        cmd: ssh -i /home/ansible/.ssh/office_gpu_server_users {{ item.name }}@localhost loginctl enable-linger {{ item.name }}
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+      register: out_lingering
+
+    - name: 3) enable lingering per user (result)
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      with_items:
+        - "{{ out_lingering.results }}"

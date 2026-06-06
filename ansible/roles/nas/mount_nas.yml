@@ -1,0 +1,91 @@
+- hosts: all
+  become: true
+
+  vars_files:
+    - ../../group_vars/var_nas.yml
+
+  vars:
+    packages_nas_list:
+      - nfs-common
+
+  tasks:
+    - name: 1) create directories for mount points
+      file:
+        path: "{{ item.path }}"
+        state: directory
+        owner: "{{ item.owner }}"
+        group: "{{ item.group }}"
+        mode: "{{ item.mode }}"
+      with_items:
+        - "{{ mountpoints }}"
+      diff: true
+
+    - name: 1) create directories for mount points (result 1/2)
+      ansible.builtin.shell:
+        cmd: ls -ldh {{ item.path }}
+      with_items:
+        - "{{ mountpoints }}"
+      register: out_dir_mountpoints
+
+    - name: 1) create directories for mount points (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      with_items:
+        - "{{ out_dir_mountpoints.results }}"
+
+
+
+    - name: 2) install packages for nfs mount (update all packages before installation)
+      ansible.builtin.apt:
+        name: "*"
+        state: latest
+      diff: true
+
+    - name: 2) install packages for nfs mount (install)
+      ansible.builtin.apt:
+        pkg: "{{ packages_nas_list }}"
+      diff: true
+
+    - name: 2) install packages for nfs mount (result 1/2)
+      ansible.builtin.shell:
+        cmd: apt -qq list {{ item }}
+      with_items:
+        - "{{ packages_nas_list }}"
+      register: out_apt
+
+    - name: 2) install packages for nfs mount (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      with_items:
+        - "{{ out_apt.results }}"
+
+
+
+    - name: 3) mount nas
+      ansible.builtin.shell:
+        cmd: mount -t nfs {{ item.address }}:{{ item.directory }} {{ item.mountpoint }}
+      with_items:
+        - "{{ nas }}"
+      diff: true
+
+    - name: 3) mount nas (result 1/4)
+      ansible.builtin.shell:
+        cmd: df -ahT | grep nfs
+      register: out_df
+
+    - name: 3) mount nas (result 2/4)
+      ansible.builtin.debug:
+        var: out_df.stdout
+
+    - name: 3) mount nas (result 3/4)
+      ansible.builtin.shell:
+        cmd: ls {{ item.mountpoint }}
+      with_items:
+        - "{{ nas }}"
+      register: out_ls_mountpoints
+
+    - name: 3) mount nas (result 4/4)
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      with_items:
+        - "{{ out_ls_mountpoints.results }}"
