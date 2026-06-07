@@ -1,0 +1,142 @@
+# https://docs.nvidia.com/datacenter/tesla/tesla-installation-notes/index.html#ubuntu-lts
+# https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html
+- hosts: all
+  become: true
+
+  vars:
+    packages1_to_install_list:
+      - cuda
+    # packages2_to_install_list: # Not needed (NVIDIA GDS)
+    #   - nvidia-gds
+
+  tasks:
+    - name: 0) reboot the server
+      ansible.builtin.reboot:
+
+
+
+    - name: 1) install the kernel headers and development packages (retrieve the running version)
+      ansible.builtin.shell:
+        cmd: uname -r
+      register: out_uname
+
+    - name: 1) install the kernel headers and development packages (set a variable for the package)
+      ansible.builtin.set_fact:
+        name_package_kernelheader: "linux-headers-{{ out_uname.stdout }}"
+
+    - name: 1) install the kernel headers and development packages (show the value set in the variable)
+      ansible.builtin.debug:
+        var: name_package_kernelheader
+
+    - name: 1) install the kernel headers and development packages (update all packages before installation)
+      ansible.builtin.apt:
+        name: "*"
+        state: latest
+        update_cache: yes
+      diff: true
+
+    - name: 1) install the kernel headers and development packages (install)
+      ansible.builtin.apt:
+        pkg: "{{ name_package_kernelheader }}"
+      diff: true
+
+    - name: 1) install the kernel headers and development packages (result 1/2)
+      ansible.builtin.shell:
+        cmd: apt -qq list {{ name_package_kernelheader }}
+      register: out_apt_kernelheader
+
+    - name: 1) install the kernel headers and development packages (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ out_apt_kernelheader.stdout }}"
+
+
+
+    - name: 2) install the CUDA repository public GPG key (retrieve the os distribution)
+      ansible.builtin.shell:
+        cmd: . /etc/os-release;echo $ID$VERSION_ID | sed -e 's/\.//g'
+      register: out_osdist
+
+    - name: 2) install the CUDA repository public GPG key (show the os distribution)
+      ansible.builtin.debug:
+        msg: "{{ out_osdist.stdout }}"
+
+    - name: 2) install the CUDA repository public GPG key (install)
+      ansible.builtin.apt:
+        deb: https://developer.download.nvidia.com/compute/cuda/repos/{{ out_osdist.stdout }}/x86_64/cuda-keyring_1.1-1_all.deb
+      diff: true
+      register: out_apt_cudagpgkey
+
+    - name: 2) install the CUDA repository public GPG key (result)
+      ansible.builtin.debug:
+        msg: "{{ out_apt_cudagpgkey.stdout }}"
+
+
+
+    - name: 3) install cuda sdk (update all packages before installation)
+      ansible.builtin.apt:
+        name: "*"
+        state: latest
+        update_cache: yes
+      diff: true
+
+    # This installation takes around 5 minutes.
+    - name: 3) install cuda sdk (install)
+      ansible.builtin.apt:
+        pkg: "{{ packages1_to_install_list }}"
+      diff: true
+
+    - name: 3) install cuda sdk (result 1/2)
+      ansible.builtin.shell:
+        cmd: apt -qq list {{ item }}
+      with_items:
+        - "{{ packages1_to_install_list }}"
+      register: out_apt_cudasdk
+
+    - name: 3) install cuda sdk (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      with_items:
+        - "{{ out_apt_cudasdk.results }}"
+
+
+
+    # - name: 4) install nvidia gds (update all packages before installation) # Not needed (NVIDIA GDS)
+    #   ansible.builtin.apt:
+    #     name: "*"
+    #     state: latest
+    #   diff: true
+
+    ### This installation takes around 30 seconds.
+    # - name: 4) install nvidia gds (install) # Not needed (NVIDIA GDS)
+    #   ansible.builtin.apt:
+    #     pkg: "{{ packages2_to_install_list }}"
+    #   diff: true
+
+    # - name: 4) install nvidia gds (result 1/2) # Not needed (NVIDIA GDS)
+    #   ansible.builtin.shell:
+    #     cmd: apt -qq list {{ item }}
+    #   with_items:
+    #     - "{{ packages2_to_install_list }}"
+    #   register: out_apt_cudagds
+
+    # - name: 4) install nvidia gds (result 2/2) # Not needed (NVIDIA GDS)
+    #   ansible.builtin.debug:
+    #     msg: "{{ item.stdout }}"
+    #   with_items:
+    #     - "{{ out_apt_cudagds.results }}"
+
+
+
+    - name: 5) reboot the server
+      ansible.builtin.reboot:
+
+
+
+    - name: 6) test nvidia-smi
+      ansible.builtin.shell:
+        cmd: nvidia-smi
+      register: out_nvidiasmi
+
+    - name: 6) test nvidia-smi (result)
+      ansible.builtin.debug:
+        msg: "{{ out_nvidiasmi.stdout }}"

@@ -1,0 +1,36 @@
+- hosts: GPU03
+  become: true
+
+  vars_files:
+    - ../../group_vars/var_aws.yml
+
+  vars:
+    cmd_cloudwatch_agtctl: "/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl"
+
+  tasks:
+    - name: 1) Edit AWS CLI CloudWatch config
+      ansible.builtin.lineinfile:
+        path: "{{ aws.cloudwatch.config.path }}"
+        regexp: "^					\"/\""
+        line: "					\"/\",\n					\"/nas/share\""
+      diff: true
+
+    - name: 1) Edit AWS CLI CloudWatch config (result 1/2)
+      ansible.builtin.shell:
+        cmd: cat {{ aws.cloudwatch.config.path }}
+      register: out_cat_cwcfg
+
+    - name: 1) Edit AWS CLI CloudWatch config (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ out_cat_cwcfg.stdout }}"
+
+
+
+    - name: 2) Apply the updated config
+      ansible.builtin.shell:
+        cmd:  "{{ cmd_cloudwatch_agtctl }} -a fetch-config -m onPrem -s -c file:{{ aws.cloudwatch.config.path }}"
+      register: out_cwagtctl
+
+    - name: 2) Apply the updated config (result)
+      ansible.builtin.debug:
+        msg: "{{ out_cwagtctl.stdout }}"

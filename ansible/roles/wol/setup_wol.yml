@@ -1,0 +1,114 @@
+# https://blog.bitmeister.jp/?p=5217
+# https://stackoverflow.com/questions/55471178/changing-ip-address-restarting-netplan
+# https://unix.stackexchange.com/questions/181425/can-we-print-the-last-word-of-each-line-in-linux-using-sed-command
+- hosts: all
+  become: true
+
+  vars:
+    dirpath_netplan: /etc/netplan/
+    keyword_ip: 192.168.0
+
+  tasks:
+    - name: 0) get hostname
+      ansible.builtin.debug:
+        var: inventory_hostname
+
+    - name: 1) define the filepath for setting (retrieve the filename)
+      ansible.builtin.shell:
+        cmd: ls {{ dirpath_netplan }}
+      register: out_ls_netplan
+
+    - name: 1) define the filepath for setting (define the variable)
+      ansible.builtin.set_fact:
+        # filepath_netplan_test: "/home/ansible/test/{{ out_ls_netplan.stdout }}" # for testing
+        # filepath_netplan_org: "{{ dirpath_netplan }}/{{ out_ls_netplan.stdout }}" # for testing
+        # filepath_netplan: "/home/ansible/test/{{ out_ls_netplan.stdout }}" # for testing
+        filepath_netplan: "{{ dirpath_netplan }}/{{ out_ls_netplan.stdout }}" # comment out when testing
+
+    # - name: 1) define the filepath for setting (copy the setting file) # for testing
+    #   ansible.builtin.copy: # for testing
+    #     remote_src: true
+    #     src: "{{ filepath_netplan_org }}" # for testing
+    #     dest: "{{ filepath_netplan_test }}" # for testing
+
+    - name: 1) define the filepath for setting (check the variable)
+      ansible.builtin.debug:
+        var: filepath_netplan
+
+
+
+    - name: 2) retrieve the network device name (retrieve)
+      ansible.builtin.shell:
+        cmd: ip address | grep {{ keyword_ip }} | sed 's/.* //'
+      register: out_ipaddr_devicename
+
+    - name: 2) retrieve the network device name (set to a variable)
+      ansible.builtin.set_fact:
+        networkdevice: "{{ out_ipaddr_devicename.stdout }}"
+
+    - name: 2) retrieve the network device name (check the variable)
+      ansible.builtin.debug:
+        var: networkdevice
+
+
+
+    - name: 3) retrieve the macaddress (retrieve)
+      ansible.builtin.shell:
+        cmd: cat /sys/class/net/{{ networkdevice }}/address
+      register: out_cat_macaddress
+
+    - name: 3) retrieve the macaddress (set to a variable)
+      ansible.builtin.set_fact:
+        macaddress: "{{ out_cat_macaddress.stdout }}"
+
+    - name: 3) retrieve the macaddress (check the variable)
+      ansible.builtin.debug:
+        var: macaddress
+
+
+
+    - name: 4) edit netplan setting file (edit 1/4)
+      ansible.builtin.lineinfile:
+        path: "{{ filepath_netplan }}"
+        state: absent
+        regexp: "^(\\s+)match:"
+      diff: true
+
+    - name: 4) edit netplan setting file (edit 2/4)
+      ansible.builtin.lineinfile:
+        path: "{{ filepath_netplan }}"
+        state: absent
+        regexp: "^(\\s+)macaddress: "
+      diff: true
+
+    - name: 4) edit netplan setting file (edit 3/4)
+      ansible.builtin.lineinfile:
+        path: "{{ filepath_netplan }}"
+        state: absent
+        regexp: "^(\\s+)wakeonlan: true"
+      diff: true
+
+    - name: 4) edit netplan setting file (edit 4/4)
+      ansible.builtin.lineinfile:
+        path: "{{ filepath_netplan }}"
+        state: present
+        insertbefore: "^  version:"
+        line: "      match:\n        macaddress: {{ macaddress }}\n      wakeonlan: true"
+      diff: true
+
+    - name: 4) edit netplan setting file (result 1/2)
+      ansible.builtin.shell:
+        cmd: cat {{ filepath_netplan }}
+      register: out_cat_netplan
+
+    - name: 4) edit netplan setting file (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ out_cat_netplan.stdout }}"
+
+
+
+    - name: 5) apply the netplan new settings
+      ansible.builtin.command:
+        cmd: netplan apply
+      async: 45
+      poll: 0

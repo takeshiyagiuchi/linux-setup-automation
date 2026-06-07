@@ -1,0 +1,137 @@
+# https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
+- hosts: all
+  become: true
+
+  vars_files:
+    - ../../group_vars/var_ansible.yml
+    - ../../group_vars/var_aws.yml
+
+  vars:
+    packages_for_awscli_list:
+      - glibc-source
+      - groff
+      - less
+      - unzip
+    url_installer_awscli: https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+    zip_installer_awscli: "{{ dirserversetup.path }}/awscliv2.zip"
+    path_installer_awscli: "{{ dirserversetup.path }}/aws/install"
+
+  tasks:
+    - name: 1) install necessary packages for AWS CLI (update all packages before installation)
+      ansible.builtin.apt:
+        name: "*"
+        state: latest
+      diff: true
+
+    - name: 1) install necessary packages for AWS CLI  (install)
+      ansible.builtin.apt:
+        pkg: "{{ packages_for_awscli_list }}"
+      diff: true
+
+    - name: 1) install necessary packages for AWS CLI  (result 1/2)
+      ansible.builtin.shell:
+        cmd: apt -qq list {{ item }}
+      with_items:
+        - "{{ packages_for_awscli_list }}"
+      register: out_apt_awscli
+
+    - name: 1) install necessary packages for AWS CLI  (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      with_items:
+        - "{{ out_apt_awscli.results }}"
+
+
+
+    - name: 2) install AWS CLI (installation check)
+      ansible.builtin.shell:
+        cmd: aws --version
+      ignore_errors: true
+      register: out_aws_version
+
+    - name: 2) install AWS CLI (installation check)
+      ansible.builtin.debug:
+        msg: "{{ out_aws_version.rc }}"
+
+    - name: 2) install AWS CLI (create a directory)
+      ansible.builtin.file:
+        path: "{{ dirserversetup.path }}"
+        state: directory
+        owner: "{{ dirserversetup.owner }}"
+        group: "{{ dirserversetup.group }}"
+        mode: "{{ dirserversetup.mode }}"
+      when: out_aws_version.rc != 0
+      diff: true
+
+    - name: 2) install AWS CLI (get installer)
+      ansible.builtin.get_url:
+        url: "{{ url_installer_awscli }}"
+        dest: "{{ zip_installer_awscli }}"
+      when: out_aws_version.rc != 0
+      diff: true
+
+    - name: 2) install AWS CLI (get installer)
+      ansible.builtin.unarchive:
+        src: "{{ zip_installer_awscli }}"
+        dest: "{{ dirserversetup.path }}/"
+        remote_src: true
+      when: out_aws_version.rc != 0
+      diff: true
+
+    - name: 2) install AWS CLI (run installer)
+      ansible.builtin.shell:
+        cmd: "{{ path_installer_awscli }}"
+      register: out_install_awscli
+      when: out_aws_version.rc != 0
+
+    - name: 2) install AWS CLI (run installer, result)
+      ansible.builtin.debug:
+        msg: "{{ out_install_awscli.stdout }}"
+      when: out_aws_version.rc != 0
+
+    - name: 2) install AWS CLI (result 1/2)
+      ansible.builtin.shell:
+        cmd: aws --version
+      register: out_aws_version
+
+    - name: 2) install AWS CLI (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ out_aws_version.stdout }}"
+
+
+
+    - name: 3) set up AWS CLI profile (create the aws directory)
+      ansible.builtin.file:
+        path: "{{ aws.dir.path }}"
+        state: directory
+        owner: "{{ aws.dir.owner }}"
+        group: "{{ aws.dir.group }}"
+        mode: "{{ aws.dir.mode }}"
+      diff: true
+
+    - name: 3) set up AWS CLI profile (copy config)
+      ansible.builtin.copy:
+        src: "settings/config"
+        dest: "{{ aws.config.path }}"
+        owner: "{{ aws.config.owner }}"
+        group: "{{ aws.config.group }}"
+        mode: "{{ aws.config.mode }}"
+      diff: true
+
+    - name: 3) set up AWS CLI profile (copy credentials)
+      ansible.builtin.copy:
+        src: "settings/credentials"
+        dest: "{{ aws.credentials.path }}"
+        owner: "{{ aws.credentials.owner }}"
+        group: "{{ aws.credentials.group }}"
+        mode: "{{ aws.credentials.mode }}"
+      diff: true
+
+    - name: 3) set up AWS CLI profile  (result 1/2)
+      ansible.builtin.shell:
+        cmd: ls -lah {{ aws.dir.path }}
+      register: out_ls_awscli
+
+    - name: 3) set up AWS CLI profile  (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ out_ls_awscli.stdout }}"

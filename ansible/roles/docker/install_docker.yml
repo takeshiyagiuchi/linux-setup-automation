@@ -1,0 +1,164 @@
+# https://docs.docker.com/engine/install/ubuntu/
+# https://qiita.com/alkshmir/items/9b1c0cdef06eb327c07d
+- hosts: all
+  become: true
+
+  vars:
+    packages_setup_list:
+      - ca-certificates
+      - curl
+      - gnupg
+    package_docker_list:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    dir_aptkey_dict: { path: "/etc/apt/keyrings", owner: "root" , group: "root" , mode: "0755" }
+    file_aptkey_docker_dict: { path: "{{ dir_aptkey_dict.path }}/docker.asc", mode: "0644" }
+    url_aptrep_docker: "https://download.docker.com/linux/ubuntu"
+    url_aptkey_docker: "{{ url_aptrep_docker }}/gpg"
+    filename_aptrep_docker: "docker"
+    file_aptrep_docker: "/etc/apt/sources.list.d/{{ filename_aptrep_docker }}.list"
+
+
+  tasks:
+    - name: 1-1) install packages for repository setup (update all packages before installation)
+      ansible.builtin.apt:
+        name: "*"
+        state: latest
+      diff: true
+
+    - name: 1-1) install packages for repository setup (install)
+      ansible.builtin.apt:
+        pkg: "{{ packages_setup_list }}"
+      diff: true
+
+    - name: 1-1) install packages for repository setup (result 1/2)
+      ansible.builtin.shell:
+        cmd: apt -qq list {{ item }}
+      with_items:
+        - "{{ packages_setup_list }}"
+      register: out_apt_setup
+
+    - name: 1-1) install packages for repository setup (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      with_items:
+        - "{{ out_apt_setup.results }}"
+
+
+
+    - name: 1-2) create an apt-key directory
+      ansible.builtin.file:
+        path: "{{ dir_aptkey_dict.path }}"
+        state: directory
+        owner: "{{ dir_aptkey_dict.owner }}"
+        group: "{{ dir_aptkey_dict.group }}"
+        mode: "{{ dir_aptkey_dict.mode }}"
+      diff: true
+
+    - name: 1-2) create an apt-key directory (result 1/2)
+      ansible.builtin.shell:
+        cmd: ls -ldh {{ dir_aptkey_dict.path }}
+      register: out_ls_diraptkey
+
+    - name: 1-2) create an apt-key directory (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ out_ls_diraptkey.stdout }}"
+
+
+
+    - name: 1-3) get docker's official apt key
+      ansible.builtin.get_url:
+        url: "{{ url_aptkey_docker }}"
+        dest: "{{ file_aptkey_docker_dict.path }}"
+        mode: "{{ file_aptkey_docker_dict.mode }}"
+        force: true
+
+    - name: 1-3) get docker's official apt key (result 1/2)
+      ansible.builtin.shell:
+        cmd: cat {{ file_aptkey_docker_dict.path }}
+      register: out_cat_aptkey
+
+    - name: 1-3) get docker's official apt key (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ out_cat_aptkey.stdout }}"
+
+
+
+    - name: 1-4) set vars (get os architecture)
+      ansible.builtin.shell:
+        cmd: dpkg --print-architecture
+      register: out_osarch
+
+    - name: 1-4) set vars (get os version codename)
+      ansible.builtin.shell:
+        cmd: lsb_release -cs
+      register: out_oscode
+
+    - name: 1-4) set vars
+      ansible.builtin.set_fact:
+        os_arch: "{{ out_osarch.stdout }}"
+        os_code: "{{ out_oscode.stdout }}"
+
+    - name: 1-4) set vars (result)
+      ansible.builtin.debug:
+        var: "{{ item }}"
+      with_items:
+        - os_arch
+        - os_code
+
+
+
+    - name: 1-5) add docker's official apt key
+      ansible.builtin.apt_repository:
+        repo: "deb [arch={{ os_arch }} signed-by={{ file_aptkey_docker_dict.path }}] {{ url_aptrep_docker }} {{ os_code }} stable"
+        state: present
+        filename: "{{ filename_aptrep_docker }}"
+
+    - name: 1-5) add docker's official apt key (result 1/2)
+      ansible.builtin.shell:
+        cmd: cat {{ file_aptrep_docker }}
+      register: out_cat_aptrep
+
+    - name: 1-5) add docker's official apt key (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ out_cat_aptrep.stdout }}"
+
+
+
+    - name: 2-1) install docker packages (update all packages before installation)
+      ansible.builtin.apt:
+        name: "*"
+        state: latest
+      diff: true
+
+    - name: 2-1) install docker packages (install)
+      ansible.builtin.apt:
+        pkg: "{{ package_docker_list }}"
+      diff: true
+
+    - name: 2-1) install docker packages (result 1/2)
+      ansible.builtin.shell:
+        cmd: apt -qq list {{ item }}
+      with_items:
+        - "{{ package_docker_list }}"
+      register: out_apt_docker
+
+    - name: 2-1) install docker packages (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      with_items:
+        - "{{ out_apt_docker.results }}"
+
+
+
+    - name: 2-2) show docker version
+      ansible.builtin.shell:
+        cmd: docker --version
+      register: out_docker_version
+
+    - name: 2-2) show docker version (result)
+      ansible.builtin.debug:
+        msg: "{{ out_docker_version.stdout }}"

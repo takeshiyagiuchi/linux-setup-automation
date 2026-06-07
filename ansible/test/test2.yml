@@ -1,0 +1,6 @@
+- hosts: all
+  become: true
+
+  tasks:
+    - ansible.builtin.debug:
+        msg: Running test2

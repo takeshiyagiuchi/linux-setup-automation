@@ -1,0 +1,4 @@
+hostnames:
+  - { hostname: "gpu01.local", ipaddr: "192.168.0.1" }
+  - { hostname: "gpu02.local", ipaddr: "192.168.0.2" }
+  - { hostname: "gpu03.local", ipaddr: "192.168.0.3" }

@@ -1,0 +1,42 @@
+- hosts: all
+  become: true
+
+  vars_files:
+    - ../../group_vars/var_users.yml
+
+  tasks:
+    - name: 1) create .ssh directories
+      file:
+        path: "{{ ['/home', item.name, '.ssh'] | path_join }}"
+        state: directory
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+        mode: "700"
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+
+    - name: 2) distribute ssh public keys
+      ansible.builtin.copy:
+        src: "{{ ['ssh_public_keys', 'authorized_keys_' ~ item.uid ~ '_' ~ item.name] | path_join }}"
+        dest: "{{ ['/home', item.name, '.ssh', 'authorized_keys'] | path_join }}"
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+        mode: "600"
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+
+    - name: 3) show result 1/2
+      ansible.builtin.shell:
+        cmd: ls -lah /home/{{ item.name }}/.ssh
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+      register: out_ls_ssh
+
+    - name: 3) show result 1/2
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      with_items:
+        - "{{ out_ls_ssh.results }}"

@@ -1,0 +1,79 @@
+# This is for executing dockerd-rootless-setup.sh while logging in to each user via ssh.
+- hosts: all
+  become: true
+
+  vars_files:
+    - ../../group_vars/var_users.yml
+
+  vars:
+    keyname: office_gpu_server_users
+    path_authorizedkeys: .ssh/authorized_keys
+
+  tasks:
+    - name: 1-1) generate an openssh keypair for ansible
+      community.crypto.openssh_keypair:
+        path: /home/ansible/.ssh/{{ keyname }}
+        # path: /home/ansible/.ssh/test
+        owner: ansible
+        group: ansible
+      register: out_keygen
+      diff: true
+
+    - name: 1-2) generate an openssh keypair for ansible (result)
+      ansible.builtin.debug:
+        msg: "{{ out_keygen.public_key }}"
+
+
+
+    - name: 2-1) Remove the ansible public key from authorized_keys (for idempotence)
+      ansible.builtin.lineinfile:
+        path: /home/{{ item.name }}/{{ path_authorizedkeys }}
+        state: absent
+        regexp: "^{{ out_keygen.public_key }}$"
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+      diff: true
+
+    - name: 2-2) Insert the ansible public key to authorized_keys
+      ansible.builtin.lineinfile:
+        path: /home/{{ item.name }}/{{ path_authorizedkeys }}
+        state: present
+        insertbefore: BOF
+        line: "{{ out_keygen.public_key }}"
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+      diff: true
+
+    - name: 2-3) Insert the ansible public key to authorized_keys (result 1/2)
+      ansible.builtin.shell:
+        cmd: cat /home/{{ item.name }}/{{ path_authorizedkeys }}
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+      register: out_cat_authorizedkeys
+
+    - name: 2-4) Insert the ansible public key to authorized_keys (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      with_items:
+        "{{ out_cat_authorizedkeys.results }}"
+
+
+
+    - name: 3-1) test ssh by ansible
+      become: true
+      become_user: ansible
+      ansible.builtin.shell:
+        cmd: ssh -i /home/ansible/.ssh/office_gpu_server_users -o StrictHostKeyChecking=no {{ item.name }}@localhost whoami
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+      register: out_ssh_whoami
+
+    - name: 3-2) test ssh by ansible (result)
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      with_items:
+        - "{{ out_ssh_whoami.results }}"

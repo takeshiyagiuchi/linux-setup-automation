@@ -1,0 +1,20 @@
+- hosts: all
+  become: true
+  tasks:
+    - ansible.builtin.debug:
+        msg: IMPORTING TEST - 1-1) Import test1
+
+- name: 1-1) Import test1
+  become: true
+  ansible.builtin.import_playbook: test1.yml
+
+
+- hosts: all
+  become: true
+  tasks:
+    - ansible.builtin.debug:
+        msg: IMPORTING TEST - 1-2) Import test2
+
+- name: 1-2) Import test2
+  become: true
+  ansible.builtin.import_playbook: test2.yml

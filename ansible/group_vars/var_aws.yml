@@ -1,0 +1,6 @@
+aws:
+  dir: { path: "/root/.aws", owner: "root", group: "root", mode: "755" }
+  config: { path: "/root/.aws/config", owner: "root", group: "root", mode: "600" }
+  credentials: { path: "/root/.aws/credentials", owner: "root", group: "root", mode: "600" }
+  cloudwatch:
+    config: { path: "/opt/aws/amazon-cloudwatch-agent/bin/config.json", owner: "root", group: "root", mode: "755" }

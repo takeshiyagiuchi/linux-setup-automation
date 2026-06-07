@@ -1,0 +1,21 @@
+- hosts: all
+  become: true
+
+  tasks:
+    # - name: test ssh by ansible
+    #   become: true
+    #   become_user: ansible
+    #   ansible.builtin.shell:
+    #     cmd: ssh -i /home/ansible/.ssh/office_gpu_server_users yagiuchi@localhost whoami
+    #   register: out_ssh_whoami
+
+    - name: test ssh by ansible
+      become: true
+      become_user: ansible
+      ansible.builtin.shell:
+        cmd: ssh -i /home/ansible/.ssh/office_gpu_server_users -o StrictHostKeyChecking=no yagiuchi@localhost whoami
+      register: out_ssh_whoami
+
+    - name: test ssh by ansible (result)
+      ansible.builtin.debug:
+        msg: "{{ out_ssh_whoami.stdout }}"
