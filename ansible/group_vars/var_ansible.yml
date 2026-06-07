@@ -1,0 +1,1 @@
+dirserversetup: { path: "/home/ansible/server_setup", owner: "ansible", group: "ansible", mode: "775" }

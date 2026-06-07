@@ -1,0 +1,62 @@
+# https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/install-CloudWatch-Agent-commandline-fleet.html
+# https://itslinuxfoss.com/install-glibc-ubuntu/#:~:text=Ubuntu%2022.04%20users%20can%20install,GNU%20and%20Linux%2Dbased%20systems.
+- hosts: all
+  become: true
+
+  vars_files:
+    - ../../group_vars/var_aws.yml
+
+  vars:
+    url_package_cwa: https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+    cmd_cloudwatch_agtctl: "/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl"
+
+  tasks:
+    - name: 1) install the CloudWatch agent package
+      ansible.builtin.apt:
+        deb: "{{ url_package_cwa }}"
+      diff: true
+      register: out_dpkg_cwa
+
+    - name: 1) install the CloudWatch agent package (result)
+      ansible.builtin.debug:
+        msg: "{{ out_dpkg_cwa.stdout }}"
+
+
+
+    - name: 2) place cloudwatch config (copy credentials)
+      ansible.builtin.copy:
+        src: "settings/config.json"
+        dest: "{{ aws.cloudwatch.config.path }}"
+        owner: "{{ aws.cloudwatch.config.owner }}"
+        group: "{{ aws.cloudwatch.config.group }}"
+        mode: "{{ aws.cloudwatch.config.mode }}"
+      diff: true
+
+    - name: 2) place cloudwatch config (result 1/4)
+      ansible.builtin.shell:
+        cmd: ls -lh {{ aws.cloudwatch.config.path }}
+      register: out_ls_cwcfg
+
+    - name: 2) place cloudwatch config (result 2/4)
+      ansible.builtin.debug:
+        msg: "{{ out_ls_cwcfg.stdout }}"
+
+    - name: 2) place cloudwatch config (result 3/4)
+      ansible.builtin.shell:
+        cmd: cat {{ aws.cloudwatch.config.path }}
+      register: out_cat_cwcfg
+
+    - name: 2) place cloudwatch config (result 4/4)
+      ansible.builtin.debug:
+        msg: "{{ out_cat_cwcfg.stdout }}"
+
+
+
+    - name: 3) run cloudwatch agent
+      ansible.builtin.shell:
+        cmd:  "{{ cmd_cloudwatch_agtctl }} -a fetch-config -m onPrem -s -c file:{{ aws.cloudwatch.config.path }}"
+      register: out_cwagtctl
+
+    - name: 3) run cloudwatch agent (result)
+      ansible.builtin.debug:
+        msg: "{{ out_cwagtctl.stdout }}"

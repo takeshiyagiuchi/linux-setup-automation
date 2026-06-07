@@ -1,0 +1,38 @@
+version: "3.9"
+services:
+  jupyter:
+    devices: # the paths depend on the machine
+      - "/dev/nvidia-modeset:/dev/nvidia-modeset"
+      - "/dev/nvidia-uvm:/dev/nvidia-uvm"
+      - "/dev/nvidia-uvm-tools:/dev/nvidia-uvm-tools"
+      - "/dev/nvidia0:/dev/nvidia0"
+      - "/dev/nvidia1:/dev/nvidia1"
+      - "/dev/nvidiactl:/dev/nvidiactl"
+      - "/dev/nvidia-caps:/dev/nvidia-caps"
+    image: ufoym/deepo:all-jupyter
+    command: jupyter notebook --no-browser --ip=0.0.0.0 --allow-root --notebook-dir='/root'
+    restart: always
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 2  # this can be 1 or 2
+              capabilities: [gpu]
+    container_name: jupyter
+    ports:
+      - target: 8888
+        published: 8912
+        protocol: tcp
+        mode: host
+      - target: 6006
+        published: 6032
+        protocol: tcp
+        mode: host
+    volumes:
+      - type: bind
+        source: /home/testuser2/docker_volume_jupyter
+        target: /root
+      - type: bind
+        source: /nas/share/testuser2
+        target: /nas

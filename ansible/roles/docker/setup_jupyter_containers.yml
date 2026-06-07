@@ -1,0 +1,181 @@
+- hosts: all
+  become: true
+
+  vars_files:
+    - ../../group_vars/var_users.yml
+    - ../../group_vars/var_docker.yml
+
+  tasks:
+    - name: 1-1) create a directory for docker
+      ansible.builtin.file:
+        path: "/home/{{ item.name }}/{{ dirroot.name }}"
+        state: directory
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+        mode: "{{ dirroot.mode }}"
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+      diff: true
+
+    - name: 1-2) create a directory for docker compose
+      ansible.builtin.file:
+        path: "/home/{{ item.name }}/{{ dirroot.name }}/{{ dircompose.name }}"
+        state: directory
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+        mode: "{{ dircompose.mode }}"
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+      diff: true
+
+    - name: 1-3) create a directory for jupyter
+      ansible.builtin.file:
+        path: "/home/{{ item.name }}/{{ dirroot.name }}/{{ dircompose.name }}/{{ dirjupyter.name }}"
+        state: directory
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+        mode: "{{ dirjupyter.mode }}"
+      when: item.jupyter
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+      diff: true
+
+    - name: 1-4) distribute compose files
+      ansible.builtin.copy:
+        src: "compose_files/docker-compose_{{ item.uid }}_{{ item.name }}.yml"
+        dest: "/home/{{ item.name }}/{{ dirroot.name }}/{{ dircompose.name }}/{{ dirjupyter.name }}/docker-compose.yml"
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+        mode: "775"
+      when: item.jupyter
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+      diff: true
+
+    - name: 1-5) show the docker directory tree
+      ansible.builtin.shell:
+        cmd: ls -lhR /home/{{ item.name }}/{{ dirroot.name }}
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+      register: out_ls_dirdocker
+
+    - name: 1-5) show the docker directory tree
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      with_items:
+        "{{ out_ls_dirdocker.results }}"
+
+
+
+    - name: 2) create a directory for docker volume
+      ansible.builtin.file:
+        path: "/home/{{ item.name }}/{{ dirvoljupyter.name }}"
+        state: directory
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+        mode: "{{ dirvoljupyter.mode }}"
+      when: item.jupyter
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+      diff: true
+
+    - name: 2) create a directory for docker volume (result 1/2)
+      ansible.builtin.shell:
+        cmd: ls -lh /home/{{ item.name }}
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+      register: out_ls_dirdockervol
+
+    - name: 2) create a directory for docker volume (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      with_items:
+        "{{ out_ls_dirdockervol.results }}"
+
+
+    ### This takes around 5 minutes per user for pulling the image
+    # - name: 3) run docker-compose # Not idempotent
+    #   become: true
+    #   become_user: ansible
+    #   ansible.builtin.shell:
+    #     cmd: ssh -i /home/ansible/.ssh/office_gpu_server_users {{ item.name }}@localhost docker compose -f /home/{{ item.name }}/{{ dirroot.name }}/{{ dircompose.name }}/{{ dirjupyter.name }}/docker-compose.yml up -d
+    #   when: item.jupyter
+    #   with_items:
+    #     - "{{ admins }}"
+    #     - "{{ users }}"
+
+    - name: 3) run docker-compose (result 1/2)
+      become: true
+      become_user: ansible
+      ansible.builtin.shell:
+        cmd: ssh -i /home/ansible/.ssh/office_gpu_server_users {{ item.name }}@localhost docker ps -a
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+      register: out_docker_ps
+
+    - name: 3) run docker-compose (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      with_items:
+        "{{ out_docker_ps.results }}"
+
+
+
+    - name: 4) retrieve the token (retrieve)
+      become: true
+      become_user: ansible
+      ansible.builtin.shell:
+        cmd: ssh -i /home/ansible/.ssh/office_gpu_server_users {{ item.name }}@localhost docker exec jupyter jupyter notebook list | grep token | sudo tee /home/{{ item.name }}/{{ filejupyter.name }}
+      when: item.jupyter
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+      diff: true
+
+    - name: 4) retrieve the token (write down)
+      ansible.builtin.file:
+        path: "/home/{{ item.name }}/{{ filejupyter.name }}"
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+        mode: "{{ filejupyter.mode }}"
+      when: item.jupyter
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+      diff: true
+
+    - name: 4) retrieve the token (result 1/4)
+      ansible.builtin.shell:
+        cmd: ls -lh /home/{{ item.name }}
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+      register: out_ls_jupyter
+
+    - name: 4) retrieve the token (result 2/4)
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      with_items:
+        "{{ out_ls_jupyter.results }}"
+
+    - name: 4) retrieve the token (result 3/4)
+      ansible.builtin.shell:
+        cmd: cat /home/{{ item.name }}/{{ filejupyter.name }} || echo "no such file"
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+      register: out_cat_jupyter
+
+    - name: 4) retrieve the token (result 4/4)
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      with_items:
+        "{{ out_cat_jupyter.results }}"

@@ -1,0 +1,37 @@
+- hosts: all
+  become: true
+
+  vars_files:
+    - ../../group_vars/var_users.yml
+
+  tasks:
+    - name: add users
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        uid: "{{ item.uid }}"
+        password: "{{ item.password }}"
+        groups: "{{ item.groups }}"
+        append: true
+        create_home: true
+        shell: /bin/bash
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+
+    - name: add users (result1 - /etc/passwd 1/2)
+      ansible.builtin.shell:
+        cmd: cat /etc/passwd
+      register: out_cat_passwd
+
+    - name: add users (result1 - /etc/passwd 2/2)
+      ansible.builtin.debug:
+        msg: "{{ out_cat_passwd.stdout }}"
+
+    - name: add users (result2 - user directories 1/2)
+      ansible.builtin.shell:
+        cmd: ls -lh /home
+      register: out_ls_home
+
+    - name: add users (result2 - user directories 2/2)
+      ansible.builtin.debug:
+        msg: "{{ out_ls_home.stdout }}"

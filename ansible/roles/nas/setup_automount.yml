@@ -1,0 +1,31 @@
+- hosts: all
+  become: true
+
+  vars_files:
+    - ../../group_vars/var_nas.yml
+
+  tasks:
+    - name: Edit fstab
+      ansible.builtin.lineinfile:
+        # path: "/home/yagiuchi/fstab"  # for testing
+        path: "/etc/fstab"
+        state: present
+        regexp: "^{{ item.address }}:{{ item.directory }} {{ item.mountpoint }} nfs defaults 0 0"
+        line: "{{ item.address }}:{{ item.directory }} {{ item.mountpoint }} nfs defaults 0 0"
+      with_items:
+        - "{{ nas }}"
+      diff: true
+
+    - name: Edit fstab (result 1/2)
+      ansible.builtin.shell:
+        # cmd: grep defaults /etc/fstab  # for testing
+        cmd: grep {{ item.address }} /etc/fstab
+      with_items:
+        - "{{ nas }}"
+      register: out_fstab
+
+    - name: Edit fstab (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      with_items:
+        - "{{ out_fstab.results }}"

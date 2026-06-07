@@ -1,0 +1,164 @@
+# https://www.linode.com/docs/guides/file-system-quotas/
+- hosts: all
+  become: true
+
+  vars:
+    packages_quota_list:
+      - quota
+
+    filepath_fstab_org: /etc/fstab
+    # filepath_fstab_test: /home/ansible/test/fstab # for testing
+    # filepath_fstab: "{{ filepath_fstab_test }}" # for testing
+    filepath_fstab: "{{ filepath_fstab_org }}" # comment out when testing
+
+  tasks:
+    - name: 1) install quota (update all packages before installation)
+      ansible.builtin.apt:
+        name: "*"
+        state: latest
+      diff: true
+
+    - name: 1) install quota (install)
+      ansible.builtin.apt:
+        pkg: "{{ packages_quota_list }}"
+      diff: true
+
+    - name: 1) install quota (result 1/4)
+      ansible.builtin.shell:
+        cmd: apt -qq list {{ item }}
+      with_items:
+        - "{{ packages_quota_list }}"
+      register: out_apt_quota
+
+    - name: 1) install quota (result 2/4)
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      with_items:
+        - "{{ out_apt_quota.results }}"
+
+    - name: 1) install quota (result 3/4)
+      ansible.builtin.shell:
+        cmd: quota --version
+      register: out_quota_version
+
+    - name: 1) install quota (result 4/4)
+      ansible.builtin.debug:
+        msg: "{{ out_quota_version.stdout }}"
+
+
+
+    # - name: 2) Edit fstab (copy fstab) # for testing
+    #   ansible.builtin.copy:
+    #     remote_src: true
+    #     src: "{{ filepath_fstab_org }}"
+    #     dest: "{{ filepath_fstab_test }}"
+    #   diff: true
+
+    - name: 2) Edit fstab
+      ansible.builtin.lineinfile:
+        path: "{{ filepath_fstab }}"
+        regexp: "^(.+)( / ext4 defaults 0 1)$"
+        line: '\1 / ext4 usrquota,grpquota 0 1'
+        backrefs: true
+      diff: true
+
+    - name: 2) Edit fstab (result 1/2)
+      ansible.builtin.shell:
+        cmd: cat {{ filepath_fstab }}
+      register: out_cat_fstab
+
+    - name: 2) Edit fstab (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ out_cat_fstab.stdout }}"
+
+
+
+    - name: 3) remount
+      ansible.builtin.shell:
+        cmd: mount -o remount /
+      register: out_cat_fstab
+
+    - name: 3) remount (result 1/2)
+      ansible.builtin.shell:
+        cmd: cat /proc/mounts | grep ' / '
+      register: out_cat_mounts
+
+    - name: 3) remount (result 2/2)
+      ansible.builtin.debug:
+        msg: "{{ out_cat_mounts.stdout }}"
+
+
+
+    - name: 4) create quota files (check status)
+      ansible.builtin.shell:
+        cmd: ls -la / | grep aquota | wc -l
+      register: out_ls_aquota
+
+    - name: 4) create quota files (set status to a variable)
+      ansible.builtin.set_fact:
+        aquota: "{{ out_ls_aquota.stdout }}"
+
+    - name: 4) create quota files (check variable)
+      ansible.builtin.debug:
+        var: aquota
+
+    - name: 4) create quota files
+      ansible.builtin.shell:
+        cmd: quotacheck -ugm /
+      register: out_quotacheck
+      when: aquota == "0"
+
+    - name: 4) create quota files (result)
+      ansible.builtin.debug:
+        msg: "{{ out_quotacheck.stdout }}"
+      when: aquota == "0"
+
+
+
+    - name: 5) get the kernel version
+      ansible.builtin.shell:
+        cmd: find /lib/modules/ -type f -name '*quota_v*.ko*' | sort -r | head -1 | awk -F "/" '{print $4}'
+      register: out_kernel_version
+
+    - name: 5) get the kernel version (set to a variable)
+      ansible.builtin.set_fact:
+        kernel_version: "{{ out_kernel_version.stdout }}"
+
+    - name: 5) get the kernel version (result)
+      ansible.builtin.debug:
+        var: kernel_version
+
+
+
+    - name: 6) Add the quota modules
+      ansible.builtin.shell:
+        cmd: modprobe {{ item }} -S {{ kernel_version }}
+      with_items:
+        - quota_v1
+        - quota_v2
+
+
+
+    - name: 7) turn on the quota system (check status)
+      ansible.builtin.shell:
+        cmd: quotastats | grep user/group | awk -F ":" '{print $2}'
+      register: out_quotastats
+
+    - name: 7) turn on the quota system (set status to a variable)
+      ansible.builtin.set_fact:
+        quotastats: "{{ out_quotastats.stdout }}"
+
+    - name: 7) turn on the quota system (check variable)
+      ansible.builtin.debug:
+        var: quotastats
+
+    - name: 7) turn on the quota system
+      ansible.builtin.shell:
+        cmd: quotaon -v /
+      register: out_quotaon
+      when: quotastats == 0
+
+    - name: 7) turn on the quota system (result)
+      ansible.builtin.debug:
+        msg: "{{ out_quotaon.stdout }}"
+      when: quotastats == 0

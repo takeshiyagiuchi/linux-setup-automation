@@ -1,0 +1,31 @@
+- hosts: all
+  become: true
+
+  vars_files:
+    - ../../group_vars/var_nas.yml
+    - ../../group_vars/var_users.yml
+
+  tasks:
+    - name: Create user directories under nas/share
+      ansible.builtin.file:
+        path: "{{ nas[0].mountpoint }}/{{ item.name }}"
+        state: directory
+        mode: "0777"
+      with_items:
+        - "{{ admins }}"
+        - "{{ users }}"
+      register: created_directories
+
+    - name: Stat over the files for checking if directories are created
+      stat:
+        path: "{{ item.path }}"
+      loop: "{{ created_directories.results }}"
+      register: stat_var
+
+    - name: Show msg if directory was created
+      ansible.builtin.debug:
+        msg: "Directory {{ item.item.path }} created."
+      loop: "{{ stat_var.results }}"
+      when:
+        - item.item.changed
+        - item.stat.exists
