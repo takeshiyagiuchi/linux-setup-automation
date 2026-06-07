@@ -1,67 +1,122 @@
-This directory contains programs to create an ISO file with autoinstall for GPU servers.  
+# Autoinstall ISO for GPU Servers
 
-<br>
+This directory contains scripts and configurations to generate a custom Ubuntu ISO image with autoinstall for GPU servers.
 
-## How to create a bootable USB
-This process is assumed to be carried out on MacOS. When you work on Ubuntu, make at the to_docker directory.  
+---
 
-<br>
+## Creating a Bootable USB
 
-The main steps here are
-1. Make an ISO image with autoinstall and
-2. Burn the ISO image to USB.
+The following steps assume the process is performed on **macOS**.  
+If you are working on Ubuntu, use the `to_docker` directory instead.
 
-<br>
+The workflow consists of two main steps:
 
-### 1. Make an ISO image with autoinstall  
-To make an ISO file, the current method we use requires it done on Ubuntu.
-  
-1-1) Review the parameters in variables.txt.  
-Set the target Ubuntu version and target machine:  
+1. Create an ISO image with autoinstall  
+2. Write the ISO image to a USB drive  
 
-    ## should be reviewed before make  
-    UBUNTU_VERSION_MJR=22
-    UBUNTU_VERSION_MDL=04
-    UBUNTU_VERSION_MNR=2
-    TARGET_MACHINE_HN=GPU01
-    TARGET_MACHINE_IP=192.168.0.11
+---
 
+## 1. Create an ISO Image with Autoinstall
 
-1-2) Add your SSH public-key for the ansible user to the `to_docker/config/post-processing/authorized_keys_ansible` file.  
+> ⚠️ The ISO build process must be executed on Ubuntu.
 
+### 1.1 Configure Variables
 
-1-3) Run `make all`.  
+Review and update parameters in `variables.txt`:
 
-<br>
+```bash id="iso1"
+# Required configuration
+UBUNTU_VERSION_MJR=22
+UBUNTU_VERSION_MDL=04
+UBUNTU_VERSION_MNR=2
+TARGET_MACHINE_HN=GPU01
+TARGET_MACHINE_IP=192.168.0.11
+```
 
-The ISO image is created on the current directory.
+---
 
-    e.g) ubuntu22042-GPU01.iso
+### 1.2 Add SSH Public Key
 
-<br>
+Add your SSH public key for the `ansible` user to:
 
-### 2. Burn the ISO image to USB  
-Refer to  
+```bash id="iso2"
+to_docker/config/post-processing/authorized_keys_ansible
+```
+
+---
+
+### 1.3 Build the ISO
+
+Run:
+
+```bash id="iso3"
+make all
+```
+
+The ISO image will be generated in the current directory.
+
+Example:
+
+```bash id="iso4"
+ubuntu22042-GPU01.iso
+```
+
+---
+
+## 2. Write the ISO to a USB Drive
+
+Follow the official Ubuntu guide:
+
 https://ubuntu.com/tutorials/create-a-usb-stick-on-macos#1-overview
 
-<br><br>
+---
 
+## Post-Installation Checklist
 
-## After installation
-After autoinstall is finished, you should test it with the items:
+After the autoinstall process completes, verify the following:
 
-- You can log in as adminuser.  
-- A NIC is up with the expected settings.  
-  $`ip a`  
-- The netplan configuration file is properly written.  
-  $`cat /etc/netplan/00-installer-config.yaml`  
-- The partitions are properly set.  
-  $`df -h`  
-- You are able to sudo without password.  
-- The user "ansible" is created.
-  
-  $`ls -la /home`  
+### System Access
+- Able to log in as `adminuser`  
+- Able to use `sudo` without a password  
 
-  $`cat /etc/passwd | grep ansible`  
-- You can connect to ansible via ssh without password.  
-- You can find the "python" command.  
+---
+
+### Network Configuration
+- Network interface is up and configured correctly:
+```bash id="iso5"
+ip a
+```
+
+- Netplan configuration is properly applied:
+```bash id="iso6"
+cat /etc/netplan/00-installer-config.yaml
+```
+
+---
+
+### Storage
+- Disk partitions are correctly configured:
+```bash id="iso7"
+df -h
+```
+
+---
+
+### User Setup
+- `ansible` user is created:
+```bash id="iso8"
+ls -la /home
+cat /etc/passwd | grep ansible
+```
+
+- SSH access for `ansible` works without a password  
+
+---
+
+### Environment
+- Python is available:
+```bash id="iso9"
+python --version
+```
+
+---
