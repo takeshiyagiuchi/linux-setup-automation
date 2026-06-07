@@ -22,4 +22,4 @@ Match User ansible
 	PasswordAuthentication no
 ---
 
-! change svadmin password
+! change adminuser password
