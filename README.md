@@ -1,133 +1,114 @@
-# Linux Setup Automation for GPU Servers
+# Linux Setup Automation
 
-This repository provides tools for automated setup and management of GPU servers using **Ubuntu autoinstall** and **Ansible**.
+This repository provides tools for **automated setup and management of Linux servers**, focusing on reproducible and consistent environments.
 
-It was developed to streamline repeated server provisioning tasks, reduce manual configuration effort, and ensure consistent environments across multiple machines.
-
----
-
-## Overview
-
-Setting up GPU servers manually is time-consuming and error-prone, especially when repeated installations are required. This repository automates the entire workflow:
-
-- OS installation using Ubuntu autoinstall  
-- System configuration using Ansible  
-- Software and environment setup for GPU workloads  
-
-The goal is to enable **reproducible, consistent, and scalable server setup** with minimal manual intervention.
+The current implementation targets **on-premise Ubuntu GPU servers**, with the goal of extending to more general Linux-based infrastructure.
 
 ---
 
 ## Motivation
 
-In practice, GPU servers often require:
-- Frequent OS reinstallation  
-- Reconfiguration of networking and storage  
-- Installation of GPU drivers, Docker, and user environments  
+I had the opportunity to set up and manage multiple GPU servers for development and experimentation. In practice, this involved:
 
-Manual setup leads to:
-- Inconsistent configurations  
-- Increased setup time  
-- Higher risk of human error  
+- Reinstalling the operating system multiple times  
+- Reconfiguring users, networking, and storage  
+- Installing GPU drivers and development environments  
 
-To address these issues, this project combines:
-- **Autoinstall** → fully automated OS installation  
-- **Ansible** → post-install configuration and provisioning  
+These tasks were **time-consuming, repetitive, and error-prone**, especially when performed manually across multiple machines.
+
+This repository was created to automate this process and ensure that all servers can be provisioned in a **consistent and reproducible way**.
 
 ---
 
-## Why Ubuntu
+## Why Linux and Ubuntu
 
-Ubuntu was chosen as the base operating system for this project due to its wide adoption, strong community support, and compatibility with GPU and machine learning workflows.
+Linux was the natural choice for building development environments due to its flexibility, performance, and strong ecosystem for machine learning and system-level tools.
 
-As one of the most popular open-source Linux distributions, Ubuntu provides:
-- Extensive documentation and community resources  
-- Reliable support for NVIDIA drivers and CUDA environments  
-- Compatibility with automation tools such as Ansible and cloud-init (autoinstall)  
+Among Linux distributions, **Ubuntu** was selected because it offers:
 
-These factors make Ubuntu a practical and stable choice for building reproducible and maintainable GPU server environments.
+- Wide adoption and strong community support  
+- Reliable compatibility with NVIDIA drivers and CUDA  
+- Extensive documentation and package availability  
+- Native support for automation tools such as cloud-init (autoinstall)  
 
----
-
-## Features
-
-- 🔧 Automated Ubuntu installation via custom ISO  
-- ⚙️ Infrastructure provisioning with Ansible  
-- 👥 User and SSH key management  
-- 🐳 Docker and GPU environment setup  
-- 📦 Reproducible and consistent system configuration  
-- 🔁 Designed for repeated deployments  
+These characteristics make Ubuntu a practical and stable foundation for GPU server environments.
 
 ---
 
-## Repository Structure
+## Approach
 
-``` id="repo1"
-linux-setup-automation/
-├── autoinstall/    # Custom Ubuntu ISO generation with autoinstall
-├── ansible/        # Ansible playbooks for provisioning and configuration
-```
+To address the challenges of manual setup, this project combines two complementary tools:
+
+### 1. Autoinstall (OS Provisioning)
+- Automates Ubuntu installation via custom ISO  
+- Preconfigures users, SSH, and networking  
+- Provides a consistent base system  
+
+### 2. Ansible (Configuration Management)
+- Automates post-install system configuration  
+- Manages users, SSH keys, and permissions  
+- Installs Docker, GPU drivers, and development tools  
+- Enables repeatable and scalable provisioning  
 
 ---
 
 ## Workflow
 
-The typical workflow is:
+The overall workflow is:
 
-1. **Generate autoinstall ISO**
-   - Preconfigure OS, users, and networking  
-2. **Install Ubuntu**
-   - Boot target machine using the generated ISO  
-3. **Run Ansible playbooks**
-   - Configure system, users, Docker, GPU drivers, etc.  
+1. Generate a custom Ubuntu ISO with autoinstall  
+2. Install the OS on target machines  
+3. Run Ansible playbooks for configuration  
 
-This approach separates:
-- **OS installation (immutable base)**  
-- **Configuration management (flexible and repeatable)**  
+```
+ISO → Install → Ansible → Ready Server
+```
 
----
-
-## Example Use Case
-
-- Provisioning multiple GPU servers for machine learning workloads  
-- Rebuilding servers after system changes or failures  
-- Ensuring consistent environments across development and production  
+This separation ensures:
+- A stable and reproducible base system  
+- Flexible and maintainable configuration management  
 
 ---
 
-## Getting Started
+## Repository Structure
 
-### Autoinstall
-See:
-- `autoinstall/README.md`
-
-### Ansible
-See:
-- `ansible/README.md`
+``` id="repo2"
+linux-setup-automation/
+├── autoinstall/    # Automated Ubuntu installation (custom ISO)
+├── ansible/        # Configuration and provisioning (Ansible playbooks)
+```
 
 ---
 
 ## Key Benefits
 
-- **Time-saving**: eliminates repetitive manual setup  
-- **Consistency**: identical environments across servers  
-- **Scalability**: easily extend to additional machines  
-- **Reproducibility**: infrastructure as code approach  
+- **Automation**: Eliminates repetitive manual setup  
+- **Consistency**: Ensures identical configurations across servers  
+- **Reproducibility**: Infrastructure can be rebuilt at any time  
+- **Scalability**: Easily extend to additional machines  
 
 ---
 
-## Future Improvements
+## Use Cases
 
-- Support for additional Linux distributions  
-- Cloud-based provisioning (e.g., AWS, GCP)  
-- CI/CD integration for infrastructure updates  
-- Improved modularization of Ansible roles  
+- Provisioning GPU servers for machine learning workloads  
+- Rebuilding systems after failures or upgrades  
+- Maintaining consistent environments across development and production  
+
+---
+
+## Future Work
+
+- Extend support to other Linux distributions  
+- Improve modularization of Ansible roles  
+- Add support for cloud-based provisioning  
+- Enhance documentation and usability  
 
 ---
 
 ## Notes
 
-- This project was developed based on real-world usage managing GPU servers  
-- Some configurations may be environment-specific and require adjustment  
+- This project is based on practical experience managing GPU servers  
+- Some configurations may require adaptation for different environments  
 
 ---
