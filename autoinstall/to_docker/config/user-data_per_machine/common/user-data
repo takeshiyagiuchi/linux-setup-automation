@@ -1,0 +1,191 @@
+#cloud-config
+autoinstall:
+  version: 1
+
+  apt:
+    disable_components: []
+    # fallback: offline-install
+    geoip: true
+    preserve_sources_list: false
+    primary:
+    - arches:
+      - amd64
+      - i386
+      uri: http://jp.archive.ubuntu.com/ubuntu
+    - arches:
+      - default
+      uri: http://ports.ubuntu.com/ubuntu-ports
+
+  drivers:
+    install: false
+
+  identity:
+    hostname: GPU0x # TARGET_MACHINE_HN_hostname
+    password: *****
+    realname: GPU0x # TARGET_MACHINE_HN_realname
+    username: adminuser
+
+  kernel:
+    package: linux-generic
+
+  keyboard:
+    layout: jp
+    toggle: null
+    variant: ''
+
+  locale: en_US.UTF-8
+
+  network:
+    ethernets:
+      enp4s0:
+        addresses:
+        - 192.168.0.1x/24 # TARGET_MACHINE_IP
+        nameservers:
+          addresses:
+          - 192.xxx.xx.xx
+          - 192.xxx.xx.xx
+          - 10.xxx.xxx.xx
+          - 10.xxx.xxx.xx
+          search: []
+        routes:
+        - to: default
+          via: 192.168.0.1
+        match:
+          macaddress: XX:XX:XX:XX:XX:XX # TARGET_MACHINE_MC
+        wakeonlan: true
+    version: 2
+
+  source:
+    id: ubuntu-server
+    search_drivers: false
+
+  ssh:
+    allow-pw: true
+    authorized-keys: []
+    install-server: true
+
+  storage:
+    config:
+    - id: disk-nvme0n1
+      type: disk
+      ptable: gpt
+      wipe: superblock-recursive
+      grub_device: false
+      preserve: false
+      path: /dev/nvme0n1
+      name: ''
+
+    - id: partition-0
+      type: partition
+      device: disk-nvme0n1
+      size: 1127219200 # 1075M
+      offset: 1048576 # 1024K
+      wipe: superblock
+      flag: boot
+      grub_device: true
+      preserve: false
+      number: 1
+
+    - id: format-0
+      type: format
+      fstype: fat32
+      volume: partition-0
+      preserve: false
+
+    - id: partition-1
+      type: partition
+      device: disk-nvme0n1
+      size: 2147483648 # 2048M
+      offset: 1128267776 # 1076M
+      wipe: superblock
+      grub_device: false
+      preserve: false
+      number: 2
+
+    - id: format-1
+      type: format
+      fstype: ext4
+      volume: partition-1
+      preserve: false
+
+    - id: partition-2
+      type: partition
+      device: disk-nvme0n1
+      size: -1 # 2045131096064
+      offset: 3275751424 # 3124M
+      wipe: superblock
+      grub_device: false
+      preserve: false
+      number: 3
+
+    - id: lvm_volgroup-0
+      type: lvm_volgroup
+      devices:
+      - partition-2
+      preserve: false
+      name: ubuntu-vg
+
+    - id: lvm_partition-0
+      type: lvm_partition
+      volgroup: lvm_volgroup-0
+      size: -1 # 2045130047488B
+      wipe: superblock
+      preserve: false
+      name: ubuntu-lv
+
+    - id: format-3
+      type: format
+      fstype: ext4
+      volume: lvm_partition-0
+      preserve: false
+
+    - id: mount-3
+      type: mount
+      device: format-3
+      path: /
+
+    - id: mount-1
+      type: mount
+      device: format-1
+      path: /boot
+
+    - id: mount-0
+      type: mount
+      device: format-0
+      path: /boot/efi
+
+  updates: security
+
+  late-commands:
+    ### Network configuration ###
+    - mkdir -p /target/home/adminuser/orgs/netplan
+    - mv /target/etc/netplan/* /target/home/adminuser/orgs/netplan/
+    - cp -f /cdrom/00-installer-config.yaml /target/etc/netplan/
+    - |
+      ip link | grep -n "MACADDRESS" | awk -F":" '{print $1}' | { a=$(</dev/stdin); b=$(($a - 1)); ip link | sed "${b}q;d"; } | awk -F" " '{print $2}' | { c=$(</dev/stdin); sed /target/etc/netplan/00-installer-config.yaml -i -E -e "s/    ifname:/    $c/g"; }
+    ### No password when sudo ###
+    - |
+      sed /target/etc/sudoers -i -E -e 's/^%sudo\s+ALL=\(ALL:ALL\)\s+ALL/%sudo ALL=(ALL:ALL) NOPASSWD: ALL/'
+    ### Add a user "ansible" ###
+    # useradd -u 2000 -g 2000 -G sudo -p ***** ansible
+    - useradd -m -R /target -u 3000 ansible
+    - echo "ansible:ansible" | chroot /target /usr/sbin/chpasswd
+    - usermod -R /target -aG sudo ansible
+    - |
+      sed /target/etc/passwd -i -E -e 's/ansible:x:3000:3000::\/home\/ansible:\/bin\/sh/ansible:x:3000:3000::\/home\/ansible:\/bin\/bash/'
+    - |
+      sed /target/etc/shadow -i -E -e 's/(ansible:).*(:.*:.*:.*:.*:.*:.*:)/\1*****\2/'
+    ### Make an authorized_keys file for ansible ###
+    # - mkdir -m 700 -o ansible -g ansible /target/home/ansible/.ssh
+    - mkdir /target/home/ansible/.ssh
+    - chown 3000:3000 /target/home/ansible/.ssh
+    - chmod 700 /target/home/ansible/.ssh
+    - cp -f /cdrom/authorized_keys_ansible /target/home/ansible/.ssh/authorized_keys
+    - chown 3000:3000 /target/home/ansible/.ssh/authorized_keys
+    - chmod 600 /target/home/ansible/.ssh/authorized_keys
+    ### SSH configuration ###
+    - echo 'Match User ansible' >> /target/etc/ssh/sshd_config
+    - echo '        PasswordAuthentication no' >> /target/etc/ssh/sshd_config
+    ### Enable the "python" command ###
+    - ln -s /usr/bin/python3 /target/usr/bin/python
+# end

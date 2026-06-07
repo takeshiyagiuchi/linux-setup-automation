@@ -1,0 +1,30 @@
+# https://ubuntu.com/server/docs/install/autoinstall
+# https://qiita.com/YasuhiroABE/items/063a442b7e45633e7cb0
+# https://github.com/YasuhiroABE/ub2204-autoinstall-iso/tree/main
+
+
+- Bring version to top
+- Put a blank line before a section (for readability)
+
+- hostname: "GPUxx"
+- username: adminuser
+- network: static when installing (change it to DHCP after installation)
+- snaps: !NEVER MENTION!
+
+- storage:
+    - sort (for readability)
+        id
+        type
+        fstype
+        ptable
+        device /devices / volume / vol-group
+        size
+        offset
+        wipe
+        grub_device
+        preserve
+        path
+        name
+        number
+    - remove serial and wwn
+    - set "-1" for the "root" partition

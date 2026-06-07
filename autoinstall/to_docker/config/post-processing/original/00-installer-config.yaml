@@ -1,0 +1,20 @@
+# This is the network config written by 'subiquity'
+network:
+  ethernets:
+    ifname:
+      addresses:
+      - 192.168.0.1x/24
+      nameservers:
+        addresses:
+        - 192.xxx.xx.xx
+        - 192.xxx.xx.xx
+        - 10.xxx.xxx.xx
+        - 10.xxx.xxx.xx
+        search: []
+      routes:
+      - to: default
+        via: 192.xxx.xx.1
+      match:
+        macaddress: XX:XX:XX:XX:XX:XX
+      wakeonlan: true
+  version: 2

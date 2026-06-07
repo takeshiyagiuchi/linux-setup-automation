@@ -1,0 +1,155 @@
+#cloud-config
+autoinstall:
+  version: 1
+
+  apt:
+    disable_components: []
+    geoip: true
+    preserve_sources_list: false
+    primary:
+    - arches:
+      - amd64
+      - i386
+      uri: http://jp.archive.ubuntu.com/ubuntu
+    - arches:
+      - default
+      uri: http://ports.ubuntu.com/ubuntu-ports
+
+  drivers:
+    install: false
+
+  identity:
+    hostname: GPU02
+    password: *****
+    realname: GPU02
+    username: adminuser
+
+  kernel:
+    package: linux-generic
+
+  keyboard:
+    layout: jp
+    toggle: null
+    variant: ''
+
+  locale: en_US.UTF-8
+
+  network:
+    ethernets:
+      enp4s0:
+        addresses:
+        - 192.168.0.12/24 # TARGET_MACHINE_IP
+        nameservers:
+          addresses:
+          - 192.xxx.xx.xx
+          - 192.xxx.xx.xx
+          - 10.xxx.xxx.xx
+          - 10.xxx.xxx.xx
+          search: []
+        routes:
+        - to: default
+          via: 192.168.0.1
+    version: 2
+
+  source:
+    id: ubuntu-server
+    search_drivers: false
+
+  ssh:
+    allow-pw: true
+    authorized-keys: []
+    install-server: true
+
+  storage:
+    config:
+    - id: disk-nvme0n1
+      type: disk
+      ptable: gpt
+      wipe: superblock-recursive
+      grub_device: false
+      preserve: false
+      path: /dev/nvme0n1
+      name: ''
+#       serial: CSSD-***********_***************
+#       wwn: eui.****************
+
+    - id: partition-0
+      type: partition
+      device: disk-nvme0n1
+      size: 1127219200 # 1075M
+      offset: 1048576 # 1024K
+      wipe: superblock
+      flag: boot
+      grub_device: true
+      preserve: false
+      number: 1
+
+    - id: format-0
+      type: format
+      fstype: fat32
+      volume: partition-0
+      preserve: false
+
+    - id: partition-1
+      type: partition
+      device: disk-nvme0n1
+      size: 2147483648 # 2048M
+      offset: 1128267776 # 1076M
+      wipe: superblock
+      grub_device: false
+      preserve: false
+      number: 2
+
+    - id: format-1
+      type: format
+      fstype: ext4
+      volume: partition-1
+      preserve: false
+
+    - id: partition-2
+      type: partition
+      device: disk-nvme0n1
+      size: -1 # 2045131096064
+      offset: 3275751424 # 3124M
+      wipe: superblock
+      grub_device: false
+      preserve: false
+      number: 3
+
+    - id: lvm_volgroup-0
+      type: lvm_volgroup
+      devices:
+      - partition-2
+      preserve: false
+      name: ubuntu-vg
+
+    - id: lvm_partition-0
+      type: lvm_partition
+      volgroup: lvm_volgroup-0
+      size: -1 # 2045130047488B
+      wipe: superblock
+      preserve: false
+      name: ubuntu-lv
+
+    - id: format-3
+      type: format
+      fstype: ext4
+      volume: lvm_partition-0
+      preserve: false
+
+    - id: mount-3
+      type: mount
+      device: format-3
+      path: /
+
+    - id: mount-1
+      type: mount
+      device: format-1
+      path: /boot
+
+    - id: mount-0
+      type: mount
+      device: format-0
+      path: /boot/efi
+
+  updates: security
