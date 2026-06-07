@@ -1,0 +1,10 @@
+# https://www.pugetsystems.com/labs/hpc/ubuntu-22-04-server-autoinstall-iso/
+
+# How to access files in iso
+(1) mount iso
+https://docs.oracle.com/cd/E56342_01/html/E53761/cpfromiso.html
+
+(2) use xorriso
+https://github.com/covertsh/ubuntu-autoinstall-generator/blob/main/ubuntu-autoinstall-generator.sh
+xorriso -osirrox on -indev "${source_iso}" -extract / "$tmpdir"
+
